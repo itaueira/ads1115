@@ -25,9 +25,20 @@ const gains = {
   '8':   0b0000100000000000,  // +/- 0.512V
   '16':  0b0000101000000000,  // +/- 0.256V
 }
+const dataRates = {
+  '8':   0b0000000000000000,  // 8 SPS
+  '16':  0b0000000000100000,  // 16 SPS
+  '32':  0b0000000001000000,  // 32 SPS
+  '64':  0b0000000001100000,  // 64 SPS
+  '128': 0b0000000010000000,  // 128 SPS
+  '250': 0b0000000010100000,  // 250 SPS
+  '475': 0b0000000011000000,  // 475 SPS
+  '860': 0b0000000011100000,  // 860 SPS
+}
 
 module.exports = (bus, addr = 0x48, delay = 10, shift = 0) => {
   let gain = gains['2/3']
+  let dataRate = dataRates['128']
 
   const writeReg16 = (register, value) => {
     const buff = Buffer.from([register & 3, value >> 8, value & 0xFF])
@@ -54,6 +65,10 @@ module.exports = (bus, addr = 0x48, delay = 10, shift = 0) => {
       if (level === (2/3)) level = '2/3'
       gain = gains[level] || gain
     },
+    get dataRate() { return dataRate },
+    set dataRate(sps) {
+      dataRate = dataRates[sps] || dataRate
+    },
     _delay: delay,
     _shift: shift,
 
@@ -64,8 +79,8 @@ module.exports = (bus, addr = 0x48, delay = 10, shift = 0) => {
       mux = MUX[mux]
       if (typeof mux === 'undefined') throw new Error('Invalid mux')
 
-      const config = 0x0183 // No comparator | 1600 samples per second | single-shot mode
-      await writeConfig(config | gain | mux | START_CONVERSION)
+      const config = 0x0103 // No comparator | single-shot mode
+      await writeConfig(config | gain | dataRate | mux | START_CONVERSION)
       await sleep(delay)
       return readResults()
     }
